@@ -1,76 +1,87 @@
-# 🔐 Security POC Tasks
+# Security Proof of Concept (POC) Tasks
 
-This repository demonstrates key security misconfigurations and their mitigation. Each task includes setup, exploitation, and remediation steps to help learn secure system administration practices.
+This repository documents a series of security proof-of-concept tasks demonstrating common misconfigurations and their remediations. These exercises are intended for educational use in controlled environments only.
 
 ---
 
-## Task 1: 🧑‍💻 User & Permission Misconfigurations
+## Task 1: User and Permission Misconfigurations
 
-**Description**  
-Improper file permissions can allow unauthorized users to access sensitive files, leading to privilege escalation.
+**Objective**  
+Demonstrate the risks of improper file permissions and how to secure sensitive files.
 
-### ✅ Setup: Creating a Sensitive File with Weak Permissions
+### Setup
 
-    # As root or sudo user
+Create a sensitive file with overly permissive permissions:
+
     echo "Sensitive content" > /home/studentuser/secret.txt
     chmod 777 /home/studentuser/secret.txt
 
-### ⚠️ Exploitation: Accessing Sensitive Files
+### Exploitation
 
-    # Any local user can now read the file
+Any local user can read the file:
+
     cat /home/studentuser/secret.txt
 
-### 🔐 Mitigation: Fixing Security Issues
+### Mitigation
+
+Restrict file access:
 
     chmod 600 /home/studentuser/secret.txt
     chown studentuser:studentuser /home/studentuser/secret.txt
 
 ---
 
-## Task 2: 🌐 Remote Access & SSH Hardening
+## Task 2: SSH Configuration and Hardening
 
-**Description**  
-Weak SSH configurations can allow unauthorized access. This task explores SSH vulnerabilities and hardening.
+**Objective**  
+Show how weak SSH settings can expose a system and demonstrate best practices for secure configuration.
 
-### ✅ Setup: Weak SSH Configuration  
-Edit `/etc/ssh/sshd_config`:
+### Setup
+
+Edit `/etc/ssh/sshd_config` to enable insecure settings:
 
     PermitRootLogin yes
     PasswordAuthentication yes
 
-Restart SSH:
+Restart the SSH service:
 
     sudo systemctl restart ssh
 
-### 🔐 Mitigation: Secure SSH  
-Edit `/etc/ssh/sshd_config`:
+### Mitigation
+
+Edit `/etc/ssh/sshd_config` to disable insecure access:
 
     PermitRootLogin no
     PasswordAuthentication no
     AllowUsers studentuser
 
-Then:
+Then restart SSH:
 
     sudo systemctl restart ssh
 
 ---
 
-## Task 3: 🔥 Firewall & Network Security
+## Task 3: Firewall and Network Security
 
-**Description**  
-A misconfigured firewall can expose systems. Learn how to scan and secure open ports.
+**Objective**  
+Illustrate the importance of proper firewall configuration to restrict unnecessary network exposure.
 
-### ✅ Setup: Open Ports & Firewall Misconfigurations
+### Setup
 
-    # Example: Open HTTP port
+Install a web server and allow HTTP traffic:
+
     sudo apt install apache2 -y
     sudo ufw allow 80
 
-### 🔍 Scan Open Ports
+### Port Scanning
+
+Use Nmap to identify open ports:
 
     nmap -sS -Pn <target-ip>
 
-### 🔐 Mitigation: Restrict Access
+### Mitigation
+
+Deny unnecessary access and enable the firewall:
 
     sudo ufw deny 80
     sudo ufw enable
@@ -78,35 +89,41 @@ A misconfigured firewall can expose systems. Learn how to scan and secure open p
 
 ---
 
-## Task 4: ⬆️ SUID & Privilege Escalation
+## Task 4: SUID and Privilege Escalation
 
-**Description**  
-SUID binaries can be exploited for root access. Learn how to detect and fix vulnerable binaries.
+**Objective**  
+Demonstrate how SUID binaries can be exploited to gain elevated privileges.
 
-### ✅ Setup: Exploitable SUID Permissions
+### Setup
+
+Copy and set SUID on the bash binary:
 
     sudo cp /bin/bash /home/studentuser/suidbash
     sudo chmod u+s /home/studentuser/suidbash
 
-### ⚠️ Exploitation: Escalating Privileges
+### Exploitation
+
+Gain a root shell:
 
     /home/studentuser/suidbash -p
-    whoami  # → root
+    whoami  # root
 
-### 🔐 Mitigation: Remove Unnecessary SUID
+### Mitigation
+
+Remove the SUID permission:
 
     sudo chmod u-s /home/studentuser/suidbash
 
 ---
 
-## Task 5: 🤖 Automated Security Auditing & Scripting
+## Task 5: Automated Security Auditing
 
-**Description**  
-Automation helps detect threats in real time. This task covers writing a basic audit script.
+**Objective**  
+Create a script to monitor login attempts and active services.
 
-### ✅ Setup: Writing a Security Audit Script
+### Setup
 
-**`security_check.sh`**
+Create the following script as `security_check.sh`:
 
     #!/bin/bash
     echo "Checking login attempts:"
@@ -115,29 +132,44 @@ Automation helps detect threats in real time. This task covers writing a basic a
     echo "Checking running services:"
     ps aux | grep -v grep | grep -E 'apache|ssh|nginx'
 
-### 🔐 Mitigation: Automate Security Checks
+Make it executable:
 
     chmod +x security_check.sh
+
+### Mitigation
+
+Schedule the script to run hourly using `cron`:
+
     (crontab -l 2>/dev/null; echo "0 * * * * /home/studentuser/security_check.sh") | crontab -
 
 ---
 
-## Task 6: 🛡️ Log Analysis & Intrusion Detection
+## Task 6: Log Analysis and Intrusion Detection
 
-**Description**  
-Analyze logs to detect failed logins and implement countermeasures like Fail2Ban.
+**Objective**  
+Review system logs to identify suspicious activity and configure automated blocking.
 
-### ✅ Setup: Enabling System Logs
+### Setup
+
+Review system logs:
 
     sudo journalctl -xe
     sudo tail -f /var/log/auth.log
 
-### 🔐 Mitigation: Use Fail2Ban
+### Mitigation
+
+Install and configure Fail2Ban:
 
     sudo apt install fail2ban -y
     sudo systemctl enable fail2ban
     sudo systemctl start fail2ban
 
 ---
-## 👨‍💻 Author
-Vishal RJ 
+
+## License
+
+This content is provided under the MIT License.
+
+## Author
+
+Your Name
