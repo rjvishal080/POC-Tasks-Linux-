@@ -1,175 +1,272 @@
-# Security Proof of Concept (POC) Tasks
+# Linux & Networking POC Lab
 
-This repository documents a series of security proof-of-concept tasks demonstrating common misconfigurations and their remediations. These exercises are intended for educational use in controlled environments only.
 
----
+## Objective
 
-## Task 1: User and Permission Misconfigurations
-
-**Objective**  
-Demonstrate the risks of improper file permissions and how to secure sensitive files.
-
-### Setup
-
-Create a sensitive file with overly permissive permissions:
-
-    echo "Sensitive content" > /home/studentuser/secret.txt
-    chmod 777 /home/studentuser/secret.txt
-
-### Exploitation
-
-Any local user can read the file:
-
-    cat /home/studentuser/secret.txt
-
-### Mitigation
-
-Restrict file access:
-
-    chmod 600 /home/studentuser/secret.txt
-    chown studentuser:studentuser /home/studentuser/secret.txt
+This lab introduces essential Linux commands, networking tools, and automation techniques through ten hands-on tasks. By completing these exercises, students will gain practical experience in system administration.
 
 ---
 
-## Task 2: SSH Configuration and Hardening
+## Task 1: Linux Essentials & File Permissions
 
-**Objective**  
-Show how weak SSH settings can expose a system and demonstrate best practices for secure configuration.
+**Steps:**
 
-### Setup
+1. Create a user:
 
-Edit `/etc/ssh/sshd_config` to enable insecure settings:
+    ```bash
+    sudo adduser studentuser
+    ```
 
-    PermitRootLogin yes
-    PasswordAuthentication yes
+2. Create the directory structure:
 
-Restart the SSH service:
+    ```bash
+    mkdir -p /home/studentuser/projectX/logs
+    mkdir -p /home/studentuser/projectX/scripts
+    ```
 
-    sudo systemctl restart ssh
+3. Create the file `welcome.txt`:
 
-### Mitigation
+    ```bash
+    echo "Welcome to Linux" > /home/studentuser/projectX/welcome.txt
+    ```
 
-Edit `/etc/ssh/sshd_config` to disable insecure access:
+4. Set secure permissions:
 
-    PermitRootLogin no
-    PasswordAuthentication no
-    AllowUsers studentuser
+    ```bash
+    chown studentuser:studentuser /home/studentuser/projectX/welcome.txt
+    chmod 600 /home/studentuser/projectX/welcome.txt
+    ```
 
-Then restart SSH:
+5. Create `backup.sh` script in `scripts/`:
 
-    sudo systemctl restart ssh
-
----
-
-## Task 3: Firewall and Network Security
-
-**Objective**  
-Illustrate the importance of proper firewall configuration to restrict unnecessary network exposure.
-
-### Setup
-
-Install a web server and allow HTTP traffic:
-
-    sudo apt install apache2 -y
-    sudo ufw allow 80
-
-### Port Scanning
-
-Use Nmap to identify open ports:
-
-    nmap -sS -Pn <target-ip>
-
-### Mitigation
-
-Deny unnecessary access and enable the firewall:
-
-    sudo ufw deny 80
-    sudo ufw enable
-    sudo ufw status
-
----
-
-## Task 4: SUID and Privilege Escalation
-
-**Objective**  
-Demonstrate how SUID binaries can be exploited to gain elevated privileges.
-
-### Setup
-
-Copy and set SUID on the bash binary:
-
-    sudo cp /bin/bash /home/studentuser/suidbash
-    sudo chmod u+s /home/studentuser/suidbash
-
-### Exploitation
-
-Gain a root shell:
-
-    /home/studentuser/suidbash -p
-    whoami  # root
-
-### Mitigation
-
-Remove the SUID permission:
-
-    sudo chmod u-s /home/studentuser/suidbash
-
----
-
-## Task 5: Automated Security Auditing
-
-**Objective**  
-Create a script to monitor login attempts and active services.
-
-### Setup
-
-Create the following script as `security_check.sh`:
-
+    ```bash
+    cat << 'EOF' > /home/studentuser/projectX/scripts/backup.sh
     #!/bin/bash
-    echo "Checking login attempts:"
-    lastb | head
+    timestamp=$(date +"%Y%m%d_%H%M%S")
+    cp /home/studentuser/projectX/welcome.txt /home/studentuser/projectX/logs/welcome_$timestamp.txt
+    EOF
 
-    echo "Checking running services:"
-    ps aux | grep -v grep | grep -E 'apache|ssh|nginx'
-
-Make it executable:
-
-    chmod +x security_check.sh
-
-### Mitigation
-
-Schedule the script to run hourly using `cron`:
-
-    (crontab -l 2>/dev/null; echo "0 * * * * /home/studentuser/security_check.sh") | crontab -
+    chmod +x /home/studentuser/projectX/scripts/backup.sh
+    ```
 
 ---
 
-## Task 6: Log Analysis and Intrusion Detection
+## Task 2: Networking Toolkit POC
 
-**Objective**  
-Review system logs to identify suspicious activity and configure automated blocking.
+1. Create `netinfo.sh`:
 
-### Setup
+    ```bash
+    cat << 'EOF' > netinfo.sh
+    #!/bin/bash
+    echo "IP Information:"
+    ip a
 
-Review system logs:
+    echo -e "\nDefault Gateway:"
+    ip route | grep default
 
-    sudo journalctl -xe
-    sudo tail -f /var/log/auth.log
+    echo -e "\nOpen Ports:"
+    ss -tuln
 
-### Mitigation
+    echo -e "\nPing google.com:"
+    ping -c 4 google.com
 
-Install and configure Fail2Ban:
+    echo -e "\nDNS Lookup for openai.com:"
+    nslookup openai.com
+    EOF
 
-    sudo apt install fail2ban -y
-    sudo systemctl enable fail2ban
-    sudo systemctl start fail2ban
+    chmod +x netinfo.sh
+    ./netinfo.sh > network_report.txt
+    ```
 
 ---
 
-## License
+## Task 3: Mini Server Monitor Script
 
-This content is provided under the MIT License.
+1. Create `monitor.sh`:
+
+    ```bash
+    cat << 'EOF' > monitor.sh
+    #!/bin/bash
+    logfile="/var/log/monitor.log"
+    echo "------ $(date) ------" >> $logfile
+
+    if ! pgrep nginx > /dev/null; then
+        echo "nginx not running. Starting..." >> $logfile
+        sudo systemctl start nginx
+    else
+        echo "nginx is running." >> $logfile
+    fi
+
+    echo "Memory Usage:" >> $logfile
+    free -h >> $logfile
+
+    echo "CPU Load:" >> $logfile
+    uptime >> $logfile
+
+    echo "Disk Usage:" >> $logfile
+    df -h >> $logfile
+    EOF
+
+    chmod +x monitor.sh
+    ```
+
+2. Schedule it every 5 minutes:
+
+    ```bash
+    crontab -e
+    # Add the line:
+    */5 * * * * /path/to/monitor.sh
+    ```
+
+---
+
+## Task 4: File Watcher Script
+
+1. Create `watch_dir.sh`:
+
+    ```bash
+    cat << 'EOF' > watch_dir.sh
+    #!/bin/bash
+    inotifywait -m /home/studentuser/projectX/logs -e create -e moved_to |
+    while read path action file; do
+        if [[ "$file" == *.txt ]]; then
+            echo "$(date): New file detected - $file" >> /home/studentuser/projectX/logs/log_monitor.txt
+        fi
+    done
+    EOF
+
+    chmod +x watch_dir.sh
+    ```
+
+---
+
+## Task 5: SSH Login Audit
+
+1. Create the script:
+
+    ```bash
+    cat << 'EOF' > ssh_audit.sh
+    #!/bin/bash
+    echo "Last 5 Successful Logins:" > ssh_audit.txt
+    last -a | head -n 5 >> ssh_audit.txt
+
+    echo -e "\nLast 5 Failed Logins:" >> ssh_audit.txt
+    journalctl _COMM=sshd | grep "Failed password" | tail -n 5 >> ssh_audit.txt
+    EOF
+
+    chmod +x ssh_audit.sh
+    ./ssh_audit.sh
+    ```
+
+---
+
+## Task 6: Crontab Practice
+
+1. Open crontab:
+
+    ```bash
+    crontab -e
+    ```
+
+2. Add the following lines:
+
+    ```cron
+    # Good morning message at 8 AM daily
+    0 8 * * * echo "Good morning!"
+
+    # Weekly backup every Sunday
+    0 2 * * 0 cp -r /home/studentuser/projectX /home/studentuser/projectX/backup/
+
+    # Delete old .log files every Friday at midnight
+    0 0 * * 5 find /home/studentuser/projectX/ -name "*.log" -mtime +7 -delete
+    ```
+
+---
+
+## Task 7: Port Scanner Script
+
+1. Create `port_scan.sh`:
+
+    ```bash
+    cat << 'EOF' > port_scan.sh
+    #!/bin/bash
+    read -p "Enter IP address: " ip
+    for port in {20..25}; do
+        timeout 1 bash -c "echo > /dev/tcp/$ip/$port" 2>/dev/null && echo "Port $port is open"
+    done
+    EOF
+
+    chmod +x port_scan.sh
+    ```
+
+---
+
+## Task 8: Website Availability Checker
+
+1. Prepare `sites.txt` with one URL per line.
+
+2. Create `check_sites.sh`:
+
+    ```bash
+    cat << 'EOF' > check_sites.sh
+    #!/bin/bash
+    while read url; do
+        if curl -Is "$url" | grep "200 OK" > /dev/null; then
+            echo "$url is UP" >> site_status.log
+        else
+            echo "$url is DOWN or UNREACHABLE" >> site_status.log
+        fi
+    done < sites.txt
+    EOF
+
+    chmod +x check_sites.sh
+    ./check_sites.sh
+    ```
+
+---
+
+## Task 9: Environment and Disk Report
+
+1. Create `env_report.sh`:
+
+    ```bash
+    cat << 'EOF' > env_report.sh
+    #!/bin/bash
+    echo "User: $(whoami)"
+    echo "Hostname: $(hostname)"
+    echo "Uptime: $(uptime -p)"
+    echo -e "\nMounted Filesystems:"
+    df -h
+    echo -e "\nEnvironment Variables:"
+    echo "\$PATH=$PATH"
+    echo "\$SHELL=$SHELL"
+    EOF
+
+    chmod +x env_report.sh
+    ./env_report.sh > env_report.txt
+    ```
+
+---
+
+## Task 10: Compress and Archive Automation
+
+1. Create `archive_logs.sh`:
+
+    ```bash
+    cat << 'EOF' > archive_logs.sh
+    #!/bin/bash
+    archive_name="archive_$(date +%Y%m%d).tar.gz"
+    find /home/studentuser/projectX/logs -name "*.log" -size +10M -print0 | tar -czvf $archive_name --null -T -
+    mv $archive_name /home/studentuser/projectX/backup/
+    EOF
+
+    chmod +x archive_logs.sh
+    ./archive_logs.sh
+    ```
+
+---
+
 
 ## Author
 
-Your Name
+[Vishal RJ]
